@@ -16,6 +16,8 @@ namespace task1_wf
         bool fill_mode = false;
         bool border_mode = false;
         Color borderColor = Color.Black;
+        Bitmap texture = null;
+
         public Form1()
         {
             InitializeComponent();
@@ -33,7 +35,10 @@ namespace task1_wf
             }
 
             else{
-                pictureBox.Image = new Bitmap(dlg.FileName);
+                /*pictureBox.Image = new Bitmap(dlg.FileName);
+                pictureBox.Invalidate();*/
+                texture = new Bitmap(dlg.FileName);
+
             }
         }
 
@@ -100,11 +105,15 @@ namespace task1_wf
         private void pictureBox_MouseDown(object sender, MouseEventArgs e){
             draw_p = e.Location;
 
-            if (fill_mode){
+            if (fill_mode && texture == null){
                 fill_algorithm(draw_p, Color.Red);
             }
 
-            if (border_mode){
+            else if (fill_mode && texture != null){
+                fill_texture_algorithm(draw_p, 0, 0);
+            }
+
+            else if (border_mode){
                 border_algorithm(draw_p);
             }
         }
@@ -136,8 +145,6 @@ namespace task1_wf
             Bitmap bitmap = (Bitmap)pictureBox.Image;
             Graphics g = Graphics.FromImage(bitmap);
 
-            g.FillRectangle(new TextureBrush(bitmap), new Rectangle(5, 5, 5, 5));
-
             if (bitmap.GetPixel(p.X, p.Y).ToArgb() == borderColor.ToArgb() || bitmap.GetPixel(p.X, p.Y).ToArgb() == fill_color.ToArgb()){
                 return;
             }
@@ -163,6 +170,42 @@ namespace task1_wf
                 start.X += 1;
             }            
         }
+
+
+        List<Point> fill_texture_points = new List<Point>();
+        private void fill_texture_algorithm(Point p, int texture_x, int texture_y)
+        {
+            Bitmap bitmap = (Bitmap)pictureBox.Image;
+            Graphics g = Graphics.FromImage(bitmap);
+
+            if ((bitmap.GetPixel(p.X, p.Y).ToArgb() == borderColor.ToArgb()) || (bitmap.GetPixel(p.X, p.Y).ToArgb() != 0)){
+                return;
+            }
+
+            while (bitmap.GetPixel(p.X - 1, p.Y).ToArgb() != borderColor.ToArgb()){
+                p.X -= 1;
+            }
+            Point start = p;
+
+            while (bitmap.GetPixel(p.X + 1, p.Y).ToArgb() != borderColor.ToArgb()){
+                p.X += 1;
+            }
+            Point end = p;
+
+            while (start.X != end.X){
+                g.DrawRectangle(new Pen(new SolidBrush(texture.GetPixel(texture_x, texture_y)), 1), new Rectangle(start.X, start.Y, 1, 1));
+                fill_texture_points.Add(start);
+                pictureBox.Invalidate();
+
+                fill_texture_algorithm(new Point(start.X, start.Y + 1), texture_x, (texture_y + 1) % texture.Height);
+                fill_texture_algorithm(new Point(start.X, start.Y - 1), texture_x, texture_y - 1 < 0 ? texture.Height - 1 : texture_y - 1);
+
+                start.X += 1;
+                texture_x = (texture_x + 1) % texture.Width;
+            }
+        }
+
+
 
 
 
