@@ -17,12 +17,21 @@ namespace task1_wf
         bool border_mode = false;
         Color borderColor = Color.Black;
         Bitmap texture = null;
+        Bitmap bitmap;
+        private Pen pen;
+        private Pen penFil;
+        private int thickness;
+        private int OldColor;
+        private Color color = Color.Black;
 
         public Form1()
         {
             InitializeComponent();
-            Bitmap bitmap = new Bitmap(pictureBox.ClientSize.Width, pictureBox.ClientSize.Height);
+            this.bitmap = new Bitmap(pictureBox.ClientSize.Width, pictureBox.ClientSize.Height);
             pictureBox.Image = bitmap;
+            thickness = 1;
+            pen = new Pen(color, thickness);
+            penFil = new Pen(pen.Color, 1);
         }
 
         private void button1_Click(object sender, EventArgs e)
@@ -104,13 +113,13 @@ namespace task1_wf
         Point draw_p;
         private void pictureBox_MouseDown(object sender, MouseEventArgs e){
             draw_p = e.Location;
-
+            this.OldColor = this.bitmap.GetPixel(draw_p.X, draw_p.Y).ToArgb();
             if (fill_mode && texture == null){
                 fill_algorithm(draw_p, Color.Red);
             }
 
             else if (fill_mode && texture != null){
-                fill_texture_algorithm(draw_p, 0, 0);
+                fill_texture_algorithm(draw_p.X,draw_p.Y);
             }
 
             else if (border_mode){
@@ -172,45 +181,55 @@ namespace task1_wf
         }
 
 
-        List<Point> fill_texture_points = new List<Point>();
-        private void fill_texture_algorithm(Point p, int texture_x, int texture_y)
+        private void fill_texture_algorithm(int x, int y)
         {
-            Bitmap bitmap = (Bitmap)pictureBox.Image;
-            Graphics g = Graphics.FromImage(bitmap);
+            if (bitmap.GetPixel(x, y).ToArgb() == OldColor && bitmap.GetPixel(x, y).ToArgb() != penFil.Color.ToArgb())
+            {
+                //координаты границ
+                int leftX, rightX;
+                Graphics g = Graphics.FromImage(bitmap);
 
-            if ((bitmap.GetPixel(p.X, p.Y).ToArgb() == borderColor.ToArgb()) || (bitmap.GetPixel(p.X, p.Y).ToArgb() != 0)){
-                return;
-            }
 
-            while (bitmap.GetPixel(p.X - 1, p.Y).ToArgb() != borderColor.ToArgb()){
-                p.X -= 1;
-            }
-            Point start = p;
+                leftBorder(x, y, out leftX);
+                rightBorder(x, y, out rightX);
 
-            while (bitmap.GetPixel(p.X + 1, p.Y).ToArgb() != borderColor.ToArgb()){
-                p.X += 1;
-            }
-            Point end = p;
+                for (int item = leftX; item < rightX; item++)
+                {
+                    int xW = item % texture.Width;
+                    int yH = y % texture.Height;
+                    Color cl = texture.GetPixel(xW, yH);
+                    penFil.Color = cl;
+                    g.DrawLine(new Pen(cl), new Point(item, y), new Point(item + 1, y));
+                }
 
-            while (start.X != end.X){
-                g.DrawRectangle(new Pen(new SolidBrush(texture.GetPixel(texture_x, texture_y)), 1), new Rectangle(start.X, start.Y, 1, 1));
-                fill_texture_points.Add(start);
+                g.Dispose();
                 pictureBox.Invalidate();
 
-                fill_texture_algorithm(new Point(start.X, start.Y + 1), texture_x, (texture_y + 1) % texture.Height);
-                fill_texture_algorithm(new Point(start.X, start.Y - 1), texture_x, texture_y - 1 < 0 ? texture.Height - 1 : texture_y - 1);
+                for (var xItem = leftX + 1; xItem < rightX; xItem++)
+                {
+                    if (y > 1)
+                        fill_texture_algorithm(xItem, y - 1);
+                    if (y < bitmap.Height - 1)
+                        fill_texture_algorithm(xItem, y + 1);
+                }
 
-                start.X += 1;
-                texture_x = (texture_x + 1) % texture.Width;
             }
         }
 
+        void leftBorder(int x, int y, out int xOut)
+        {
+            while ((x > 1) && (this.bitmap.GetPixel(x, y).ToArgb() == OldColor))
+                x--;
+            xOut = x;
+        }
 
 
-
-
-
-
+        void rightBorder(int x, int y, out int xOut)
+        {
+            while ((x < bitmap.Width) && (bitmap.GetPixel(x, y).ToArgb() == OldColor))
+                x++;
+            xOut = x;
+        }
 
         private void border_algorithm(Point p){
             Bitmap bitmap = (Bitmap)pictureBox.Image;
