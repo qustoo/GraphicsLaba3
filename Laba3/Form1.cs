@@ -25,14 +25,11 @@ namespace Laba3
         public Form1()
         {
             InitializeComponent();
+            //выключаем алгоритмы,чтобы пользователь сам выбрал
+            radioButton1.Checked = false;
+            radioButton3.Checked = false;
             btm = new Bitmap(this.pictureBox1.Width, this.pictureBox1.Height);
-
             pen = new Pen(color, thinkness);
-        }
-
-        private void Form1_Load(object sender, EventArgs e)
-        {
-
         }
 
         private void pictureBox1_MouseDown(object sender, MouseEventArgs e)
@@ -47,30 +44,63 @@ namespace Laba3
             // MessageBox.Show($"x is {Convert.ToInt32(e.X)}, y is {Convert.ToInt32(e.Y)}");
             if(this.flag_brezenhame)
             {
-                BresenhamAlgorithm(x0, y0, 150, 150);
+                if(xStart < 1 && yStart < 1)
+                {
+                    xStart = x0;
+                    yStart = y0;
+                }
+                else
+                {
+                    xEnd = x0;
+                    yEnd = y0;
+                    BresenhamAlgorithm(xStart, yStart, xEnd, yEnd);
+                }
+                
             }
             if(this.flag_wu)
             {
-
+                if (xStart < 1 && yStart < 1)
+                {
+                    xStart = x0;
+                    yStart = y0;
+                }
+                else
+                {
+                    xEnd = x0;
+                    yEnd = y0;
+                    WuAlgorithm(xStart, yStart, xEnd, yEnd);
+                }
             }
         }
 
+        // choose current color
         private void ChoseColorButton_Click(object sender, EventArgs e)
         {
-
+            ColorDialog clrDiag = new ColorDialog();
+            clrDiag.AllowFullOpen = false;
+            clrDiag.ShowHelp = false;
+            if(clrDiag.ShowDialog() == DialogResult.OK)
+            {
+                this.color = clrDiag.Color;
+                
+            }
         }
 
+        // brezenhame
         private void radioButton1_CheckedChanged(object sender, EventArgs e)
         {
             this.flag_brezenhame = true;
             this.flag_wu = false;
         }
 
+        // wu
         private void radioButton3_CheckedChanged(object sender, EventArgs e)
         {
-            this.flag_brezenhame = false;
             this.flag_wu = true;
+            this.flag_brezenhame = false; 
         }
+
+        // swap elems in algorithm
         private void Swap<T>(ref T val1, ref T val2)
         {
             T val3 = val1;
@@ -81,20 +111,38 @@ namespace Laba3
         {
             g.FillRectangle(brh, x0, y0, 1, 1);
         }
+
+        // clear canvas
+        private void button1_Click(object sender, EventArgs e)
+        {
+            Graphics g = Graphics.FromImage(btm);
+            g.Clear(this.pictureBox1.BackColor);
+            this.pictureBox1.Image = btm;
+            pictureBox1.Refresh();
+            g.Dispose();
+        }
+
+        // border around picturebox
+        private void pictureBox1_Paint(object sender, PaintEventArgs e)
+        {          
+            ControlPaint.DrawBorder(e.Graphics, this.pictureBox1.ClientRectangle, Color.Black, ButtonBorderStyle.Solid);
+        }
+
         private void BresenhamAlgorithm(int x0,int y0,int x1,int y1)
         {
             Graphics g = Graphics.FromImage(btm);
-            Brush brh = createBrush(this.color);
-            var dx = x1 - x0;
-            var dy = y1 - y0;
+            Brush brh = new SolidBrush(this.color);
+            var dx = x1 - x0; // проекция на ось
+            var dy = y1 - y0; // проекция на ось
             if((x0 > x1 && Math.Abs(dx) > Math.Abs(dy)) || (Math.Abs(dx) <= Math.Abs(dy) && y1 < y0))
             {
+                // Если линия растёт не слева направо, а наоборт, то меняем начало и конец отрезка местами
                 Swap(ref x0, ref x1); // передача по ссылке
                 Swap(ref y0, ref y1);
             }
             dx = x1 - x0;
             dy = y1 - y0;
-            int step = 1; // шаг
+            int step = 1; // направление роста
             DrawPoint(brh, x0, y0, g);
             if(Math.Abs(dx) > Math.Abs(dy))
             {
@@ -107,7 +155,7 @@ namespace Laba3
                 var d1 = 2 * dy;
                 var d2 = 2 * (dy - dx);
                 var yi = y0;
-                for(int xi = x1+1; xi<x1; xi++)
+                for(int xi = x0+1; xi<x1; xi++)
                 {
                     if(di > 0)
                     {
@@ -131,7 +179,7 @@ namespace Laba3
                 var di = 2 * dx - dy;
                 var d1 = 2 * dx;
                 var d2 = 2 * (dx - dy);
-                var xi = x1;
+                var xi = x0;
                 for (int yi = y0 + 1; yi < y1; yi++)
                 {
                     if (di > 0)
@@ -152,22 +200,49 @@ namespace Laba3
             yStart = 0;
             
         }
-
-        private Brush createBrush(Color clr)
+        private void DrawPointWu(Brush brush, int x, int y, float c)
         {
-            if(clr == Color.Red)
+            int alpha = (int)(c * 255);
+            if (alpha > 255) alpha = 255;
+            if (alpha < 0) alpha = 0;
+            Color cl = Color.FromArgb(alpha, color);
+            this.btm.SetPixel(x, y, cl);
+        }
+
+        private void WuAlgorithm(int x0,int y0,int x1,int y1)
+        {
+            Brush brush = new SolidBrush(color);
+
+            var steep = Math.Abs(y1 - y0) > Math.Abs(x1 - x0);
+            if (steep)
             {
-                return Brushes.Red;
+                Swap(ref x0, ref y0);
+                Swap(ref x1, ref y1);
             }
-            if(clr == Color.Blue)
+            if (x0 > x1)
             {
-                return Brushes.Blue;
+                Swap(ref x0, ref x1);
+                Swap(ref y0, ref y1);
             }
-            if(clr == Color.Gray)
+
+            DrawPointWu(brush, steep ? y0 : x0, steep ? x0 : y0, 1);
+            DrawPointWu(brush, steep ? y1 : x1, steep ? x1 : y1, 1);
+            float dx = x1 - x0;
+            float dy = y1 - y0;
+            float gradient = dy / dx;
+            float y = y0 + gradient;
+            for (var x = x0 + 1; x <= x1 - 1; x++)
             {
-                return Brushes.Gray;
+                DrawPointWu(brush, steep ? (int)y : x, steep ? x : (int)y, 1 - (y - (int)y));
+                DrawPointWu(brush, steep ? (int)y + 1 : x, steep ? x : (int)y + 1, y - (int)y);
+                y += gradient;
             }
-            return Brushes.Black;
+
+            pen.Dispose();
+            pictureBox1.Image = btm;
+            pictureBox1.Invalidate();
+            xStart = 0;
+            yStart = 0;
         }
     }
 }
